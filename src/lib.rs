@@ -1,38 +1,42 @@
+use std::collections::HashSet;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::near_bindgen;
+use near_sdk::collections::UnorderedMap;
+use near_sdk::{near_bindgen, AccountId, env};
+
+
 
 #[near_bindgen]
-#[derive(Default, BorshDeserialize, BorshSerialize)]
+#[derive(BorshDeserialize, BorshSerialize)]
 pub struct Contract {
-    // SETUP CONTRACT STATE
+    relations: UnorderedMap<AccountId, HashSet<Relation>>,
+}
+
+impl Default for Contract {
+    fn default() -> Self {
+        Self {
+            relations: UnorderedMap::new(b"k"),
+        }
+    }
+}
+
+#[derive(BorshDeserialize, BorshSerialize, PartialEq, Eq, Hash, PartialOrd)]
+pub enum Relation{
+    TrustTo(AccountId, u8),
+    DependOn(AccountId, u8)
 }
 
 #[near_bindgen]
 impl Contract {
-    // ADD CONTRACT METHODS HERE
-}
-
-/*
- * the rest of this file sets up unit tests
- * to run these, the command will be:
- * cargo test --package rust-template -- --nocapture
- * Note: 'rust-template' comes from Cargo.toml's 'name' key
- */
-
-// use the attribute below for unit tests
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use near_sdk::test_utils::{get_logs, VMContextBuilder};
-    use near_sdk::{testing_env, AccountId};
-
-    // part of writing unit tests is setting up a mock context
-    // provide a `predecessor` here, it'll modify the default context
-    fn get_context(predecessor: AccountId) -> VMContextBuilder {
-        let mut builder = VMContextBuilder::new();
-        builder.predecessor_account_id(predecessor);
-        builder
+    
+    #[payable]
+    pub fn trust_to(&mut self, mate: AccountId, distance: u8){
+        let predecessor = env::predecessor_account_id();
+        let mut relation_set = self.relations.get(&predecessor).unwrap_or_default();
+        relation_set.insert(Relation::TrustTo(mate, distance));
+        self.relations.insert(&predecessor, &relation_set);
     }
 
-    // TESTS HERE
+    pub fn get_relations(&self, account_id: AccountId)->HashSet<Relation>{
+        self.relations.get(&account_id).expect("no relations")
+    }
 }
