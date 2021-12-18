@@ -26,6 +26,8 @@ impl Default for Contract {
 pub enum RelationKind{
     Knows(AccountId, u8),
     DependsOn(AccountId, u8),
+    Follows(AccountId),
+    Loves(AccountId, u8)
     // WorksFor(AccountId, u8)
     // Partners(AccountId, u8)
 }
@@ -33,11 +35,20 @@ pub enum RelationKind{
 #[near_bindgen]
 impl Contract {
     #[payable]
-    pub fn trust_to(&mut self, mate: AccountId, distance: u8){
+    pub fn know(&mut self, mate: AccountId, distance: u8){
         let predecessor = env::predecessor_account_id();
-        let mut relation_set = self.relations.get(&predecessor).unwrap_or_default();
-        relation_set.insert(RelationKind::Knows(mate, distance));
-        self.relations.insert(&predecessor, &relation_set);
+        self.add_relation(predecessor, RelationKind::Knows(mate, distance))
+    }
+
+    pub fn depend_on(&mut self, account_id: AccountId, distance: u8){
+        let predecessor = env::predecessor_account_id();
+        self.add_relation(predecessor, RelationKind::DependsOn(account_id, distance))
+    }
+
+    fn add_relation(&mut self, account_id: AccountId, relation: RelationKind){
+        let mut relations = self.relations.get(&account_id).unwrap_or_default();
+        relations.insert(relation);
+        self.relations.insert(&account_id, &relations);
     }
 
     pub fn get_relations(&self, account_id: AccountId)->HashSet<RelationKind>{
