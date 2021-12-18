@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashSet, BTreeMap};
 
 use near_jsonrpc_client::methods::tx::TransactionInfo;
 use near_jsonrpc_client::{methods, JsonRpcClient, NEAR_TESTNET_RPC_URL};
@@ -10,15 +10,7 @@ use serde::Deserialize;
 
 type AccountId = String;
 
-#[derive(PartialEq, Eq, Hash, PartialOrd, Deserialize, Debug)]
-pub enum RelationKind{
-    Knows(AccountId, u8),
-    DependsOn(AccountId, u8),
-    Follows(AccountId),
-    Loves(AccountId, u8)
-    // WorksFor(AccountId, u8)
-    // Partners(AccountId, u8)
-}
+
 
 #[tokio::main]
 async fn main() {
@@ -43,7 +35,7 @@ async fn main() {
     let status = testnet_client.call(view_request).await.unwrap();
     match status.kind{
         QueryResponseKind::CallResult(result) => {
-            println!("got bytes: {:?}", serde_json::from_slice::<HashSet<RelationKind>>(&result.result));
+            println!("got bytes: {:?}", serde_json::from_slice::<BTreeMap<AccountId, (u8, u8)>>(&result.result));
             println!("got string: {:?}", String::from_utf8_lossy(&result.result))
         },
         _ => {}
