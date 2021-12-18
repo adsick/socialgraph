@@ -13,10 +13,8 @@ type AccountId = String;
 mod graph;
 use graph::*;
 
-#[tokio::main]
-async fn main() {
-    let testnet_client = JsonRpcClient::connect(NEAR_TESTNET_RPC_URL);
-    let view_request = methods::query::RpcQueryRequest {
+fn get_connection_for(account_id: &AccountId) -> methods::query::RpcQueryRequest {
+    methods::query::RpcQueryRequest {
         block_reference: near_primitives::types::Finality::Final.into(),
         request: {
             CallFunction {
@@ -24,7 +22,7 @@ async fn main() {
                 method_name: "get_connections_for".to_owned(),
                 args: serde_json::to_string(&serde_json::json!(
                     {
-                        "account_id": "adsick.testnet",
+                        "account_id": account_id,
                     }
                 ))
                 .unwrap()
@@ -32,8 +30,16 @@ async fn main() {
                 .into(),
             }
         },
-    };
-    let status = testnet_client.call(view_request).await.unwrap();
+    }
+}
+
+#[tokio::main]
+async fn main() {
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    assert_eq!(args.len(), 1, "Enter your account_id");
+    let testnet_client = JsonRpcClient::connect(NEAR_TESTNET_RPC_URL);
+    let get_connection_for = get_connection_for(&args[0]);
+    let status = testnet_client.call(get_connection_for).await.unwrap();
     match status.kind{
         QueryResponseKind::CallResult(result) => {
             println!("got bytes: {:?}", serde_json::from_slice::<BTreeMap<AccountId, (u8, u8)>>(&result.result));
