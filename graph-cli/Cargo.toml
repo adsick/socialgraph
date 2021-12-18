@@ -12,3 +12,5 @@ near-crypto = "0.10.0"
 near-primitives = "0.10.0"
 tokio = { version = "1", features = ["macros"] }
 serde_json = "1.0.66"
+
+petgraph = "0.6"

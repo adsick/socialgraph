@@ -3,6 +3,7 @@ use near_jsonrpc_client::{methods, JsonRpcClient, NEAR_TESTNET_RPC_URL};
 
 use near_crypto::SecretKey;
 use near_primitives::views::QueryRequest::CallFunction;
+use near_jsonrpc_primitives::types::query::QueryResponseKind;
 
 #[tokio::main]
 async fn main() {
@@ -25,5 +26,13 @@ async fn main() {
         },
     };
     let status = testnet_client.call(view_request).await.unwrap();
-    println!("{:?}", serde_json::to_string(&status));
+    match status.kind{
+        QueryResponseKind::CallResult(result) => {
+            println!("got bytes: {:?}", result.result);
+            println!("got string: {:?}", String::from_utf8_lossy(&result.result))
+        },
+        _ => {}
+    }
+    // println!("{:?}", status.kind);
+    // println!("{:?}", serde_json::to_string(&status));
 }
