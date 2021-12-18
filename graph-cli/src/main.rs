@@ -10,6 +10,8 @@ use serde::Deserialize;
 
 type AccountId = String;
 
+const CONNECT_ACCOUNT_ID: &str = "sg.adsick.testnet";
+
 mod graph;
 use graph::*;
 
@@ -18,7 +20,7 @@ fn get_connection_for(account_id: &AccountId) -> methods::query::RpcQueryRequest
         block_reference: near_primitives::types::Finality::Final.into(),
         request: {
             CallFunction {
-                account_id: "sg.adsick.testnet".parse().unwrap(),
+                account_id: CONNECT_ACCOUNT_ID.parse().unwrap(),
                 method_name: "get_connections_for".to_owned(),
                 args: serde_json::to_string(&serde_json::json!(
                     {
@@ -39,7 +41,10 @@ async fn main() {
     assert_eq!(args.len(), 1, "Enter your account_id");
     let testnet_client = JsonRpcClient::connect(NEAR_TESTNET_RPC_URL);
     let get_connection_for = get_connection_for(&args[0]);
-    let status = testnet_client.call(get_connection_for).await.unwrap();
+    let status = match testnet_client.call(get_connection_for).await {
+        Ok(res) => res,
+        Err(_) => panic!("User not found"),
+    };
     match status.kind{
         QueryResponseKind::CallResult(result) => {
             println!("got bytes: {:?}", serde_json::from_slice::<BTreeMap<AccountId, (u8, u8)>>(&result.result));
