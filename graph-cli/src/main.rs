@@ -10,7 +10,8 @@ use serde::Deserialize;
 
 type AccountId = String;
 
-
+mod graph;
+use graph::*;
 
 #[tokio::main]
 async fn main() {
@@ -19,11 +20,11 @@ async fn main() {
         block_reference: near_primitives::types::Finality::Final.into(),
         request: {
             CallFunction {
-                account_id: "dev-1639808650191-52226736321191".parse().unwrap(),
-                method_name: "get_status".to_owned(),
+                account_id: "sg.adsick.testnet".parse().unwrap(),
+                method_name: "get_connections_for".to_owned(),
                 args: serde_json::to_string(&serde_json::json!(
                     {
-                        "account_id": "kek",
+                        "account_id": "adsick.testnet",
                     }
                 ))
                 .unwrap()
@@ -40,6 +41,10 @@ async fn main() {
         },
         _ => {}
     }
-    // println!("{:?}", status.kind);
-    // println!("{:?}", serde_json::to_string(&status));
+
+    let mut connections = Connections::default();
+
+    
+
+
 }
