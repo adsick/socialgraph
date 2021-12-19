@@ -7,17 +7,16 @@ use near_sdk::{near_bindgen, AccountId, env};
 
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize)]
-pub struct Contract {
-    connections: UnorderedMap<AccountId, BTreeMap<AccountId, (u8, u8)>>,
-    // connections_rev: UnorderedMap<>,
-    // familiarity: UnorderedMap<AccountId, HashSet<(AccountId, u8)>>, //knowledge map
-    // dependancies: UnorderedMap<AccountId, HashSet<(AccountId, u8)>>,
-    
-    // know: UnorderedMap<AccountId, HashSet<(AccountId, u8)>>,
-    // known_by: UnorderedSet<AccountId>,
+pub struct SocialGraph {
+    connections: UnorderedMap<AccountId, BTreeMap<String, u8>>,
 }
 
-impl Default for Contract {
+// #[derive(BorshDeserialize, BorshSerialize)]
+// pub struct ContractOld {
+//     connections: UnorderedMap<AccountId, BTreeMap<AccountId, (u8, u8)>>,
+// }
+
+impl Default for SocialGraph {
     fn default() -> Self {
         Self {
             connections: UnorderedMap::new(b"c")
@@ -26,17 +25,37 @@ impl Default for Contract {
 }
 
 #[near_bindgen]
-impl Contract {
+impl SocialGraph {
     #[payable]
-    pub fn connect(&mut self, to: AccountId, distance: u8){
+    pub fn connect(&mut self, to: AccountId, kind: Option<String>, distance: u8){
         let predecessor = env::predecessor_account_id();
         let mut connections = self.connections.get(&predecessor).unwrap_or_default();
-        
-        connections.insert(to, (1, distance));
+        let mut connection = to.to_string();
+        if let Some(kind) = kind{
+            connection += ":";
+            connection += &kind;
+        }
+        connections.insert(connection, distance);
         self.connections.insert(&predecessor, &connections);
     }
 
-    pub fn get_connections_for(&self, account_id: AccountId)->BTreeMap<AccountId, (u8, u8)>{
+    #[payable]
+    pub fn disconnect(&mut self, from: AccountId, kind: Option<String>)->u8{
+        let predecessor = env::predecessor_account_id();
+        if let Some(mut connections) = self.connections.get(&predecessor){
+            let mut connection = from.to_string();
+            if let Some(kind) = kind{
+                connection += ":";
+                connection += &kind;
+            }
+            return connections.remove(&connection).expect("there was no connection")
+        }
+        env::panic_str("there is no connections for this user")
+    }
+
+    pub fn get_connections_for(&self, account_id: AccountId)->BTreeMap<String, u8>
+    {
+        // env::log_str(&format!("{:?}", self.connections.get(&account_id).unwrap()));
         self.connections.get(&account_id).expect("not found")
     }
 }

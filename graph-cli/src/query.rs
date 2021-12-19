@@ -10,7 +10,7 @@ use near_primitives::views::QueryRequest::CallFunction;
 use near_primitives::types::Finality;
 pub type AccountId = String;
 
-const SOCIAL_GRAPH_CONTRACT: &str = "sg.adsick.testnet";
+const SOCIAL_GRAPH_CONTRACT: &str = "sg2.adsick.testnet";
 
 pub fn testnet_client()->JsonRpcClient<Unauthenticated>{
     JsonRpcClient::connect(NEAR_TESTNET_RPC_URL)

@@ -24,7 +24,7 @@ async fn main() {
     let graph = connections.get_graph_mut();
     
     
-    let mut unvisited_accounts: HashSet<AccountId> = vec![args.get(0).cloned().unwrap_or("md4ire.testnet".to_string())].into_iter().collect();
+    let mut unvisited_accounts: HashSet<AccountId> = vec![args.get(0).cloned().unwrap_or("adsick.testnet".to_string())].into_iter().collect();
     let mut visited_accounts = HashSet::new();
 
     let mut count = 0;
@@ -43,7 +43,7 @@ async fn main() {
 
             if let Some(unparsed) = query_connections(&client, &account).await{
                 println!("unparsed:\n{:?}", unparsed);
-                let connections: BTreeMap<AccountId, (u8, u8)> = serde_json::from_str(&unparsed).expect("parsing error");
+                let connections: BTreeMap<String, u8> = serde_json::from_str(&unparsed).expect("parsing error");
 
                 let head =
                 if let Some((ix, _)) = graph.node_references().find(|(_, a)|*a == &account){
