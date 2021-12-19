@@ -1,97 +1,92 @@
+use std::cell::RefCell;
 use std::collections::{BTreeMap, HashSet};
 
-use near_jsonrpc_client::methods::tx::TransactionInfo;
-use near_jsonrpc_client::{methods, JsonRpcClient, NEAR_TESTNET_RPC_URL};
-
-use near_crypto::SecretKey;
-use near_jsonrpc_primitives::types::query::QueryResponseKind;
-use near_primitives::views::QueryRequest::CallFunction;
+use petgraph::data::Build;
+use petgraph::dot::Dot;
 use petgraph::visit::{EdgeRef, IntoNodeIdentifiers, IntoNodeReferences, NodeIndexable};
 use petgraph::Graph;
 use serde::Deserialize;
 
-type AccountId = String;
-
-const CONNECT_ACCOUNT_ID: &str = "sg.adsick.testnet";
+mod query;
+use query::*;
 
 mod graph;
 use graph::*;
 
-fn get_connection_for(account_id: &AccountId) -> methods::query::RpcQueryRequest {
-    methods::query::RpcQueryRequest {
-        block_reference: near_primitives::types::Finality::Final.into(),
-        request: {
-            CallFunction {
-                account_id: CONNECT_ACCOUNT_ID.parse().unwrap(),
-                method_name: "get_connections_for".to_owned(),
-                args: serde_json::to_string(&serde_json::json!(
-                    {
-                        "account_id": account_id,
-                    }
-                ))
-                .unwrap()
-                .into_bytes()
-                .into(),
-            }
-        },
-    }
-}
-
 #[tokio::main]
 async fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    assert_eq!(args.len(), 1, "Enter your account_id");
-    let testnet_client = JsonRpcClient::connect(NEAR_TESTNET_RPC_URL);
+    //assert_eq!(args.len(), 1, "Enter your account_id");
+    let client = testnet_client();
     
     
     let mut connections = Connections::default();
     let graph = connections.get_graph_mut();
     
     
-    let mut account = args[0].clone();
+    let mut unvisited_accounts: HashSet<AccountId> = vec![args.get(0).cloned().unwrap_or("md4ire.testnet".to_string())].into_iter().collect();
+    let mut visited_accounts = HashSet::new();
 
-    for i in 0..10{
-        let get_connection_for = get_connection_for(&account);
-        match testnet_client.call(get_connection_for).await {
-            Ok(res) => {
-    
-                match res.kind {
-                    QueryResponseKind::CallResult(result) => {
-                        let query_result =
-                            serde_json::from_slice::<BTreeMap<AccountId, (u8, u8)>>(&result.result).unwrap();
-                        let current_node = graph.add_node(account.clone());
-                        for connection in query_result {
-                            account = connection.0;
-                            let new_node_ix =
-                                if let Some((ix, _)) = graph.node_references().find(|n| n.1 == &account) {
-                                    ix
-                                } else {
-                                    graph.add_node(account.clone())
-                                };
-                                
-                            graph.add_edge(current_node, new_node_ix, connection.1);
-                        }
-                        println!("got string: {:?}", String::from_utf8_lossy(&result.result))
-                    }
-                    _ => {}
+    let mut count = 0;
+    let limit = 5;
+
+    while count < limit {
+        count += 1;
+        println!("----");
+        println!("{:?}", unvisited_accounts);
+        println!("{:?}", visited_accounts);
+        println!("----");
+
+
+        if let Some(account) = unvisited_accounts.iter().find(|a|!visited_accounts.contains(*a)).cloned(){
+            println!("fetching unvisited account {}...", account);
+
+            if let Some(unparsed) = query_connections(&client, &account).await{
+                println!("unparsed:\n{:?}", unparsed);
+                let connections: BTreeMap<AccountId, (u8, u8)> = serde_json::from_str(&unparsed).expect("parsing error");
+
+                let head =
+                if let Some((ix, _)) = graph.node_references().find(|(_, a)|*a == &account){
+                    println!("found it on index {:?}", ix);
+                    ix
+                } else {
+                    println!("can't find it, add a new node...");
+                    graph.add_node(account.clone())
+                };
+
+                println!("added {} to visited list", account);
+                visited_accounts.insert(account.clone());
+                println!("removed {} from unvisited list", account);
+                unvisited_accounts.remove(&account);
+                
+                for (account, kind) in connections{
+                    unvisited_accounts.insert(account.clone());
+                    
+                    let child =
+                    if let Some((ix, _)) = graph.node_references().find(|(_, a)|*a == &account){
+                        println!("found it on index {:?}", ix);
+                        ix
+                    } else {
+                        println!("can't find it, add a new node...");
+                        graph.add_node(account)
+                    };
+                    graph.add_edge(head, child, kind);
                 }
-    
-    
-    
-            },
-            Err(_) => {
-                break;
-            },
-        };
-
+            } else {
+                println!("haven't found any new connections for {}", account);
+                unvisited_accounts.remove(&account);
+                visited_accounts.insert(account.clone());
+            }
+        } else {
+            println!("no more accounts");
+            break;
+        }   
     }
     println!("-----------------");
-
+    
     println!("{:?}", graph);
+   
+    println!("-----------------");
 
-
-    
-
-
-    
+    println!("{:?}", Dot::new(&*graph));
 }

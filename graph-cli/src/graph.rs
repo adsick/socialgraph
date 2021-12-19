@@ -14,5 +14,4 @@ impl Connections{
     pub fn get_graph_mut(&mut self)->&mut Graph<AccountId, (u8, u8)>{
         &mut self.graph
     }
-
 }
